@@ -1,0 +1,146 @@
+const admin = require('firebase-admin');
+const DeviceToken = require('../models/DeviceToken');
+
+// Initialise Firebase Admin SDK once.
+// The service account JSON file path is set via FIREBASE_SERVICE_ACCOUNT_PATH env var.
+// Alternatively paste the JSON content into FIREBASE_SERVICE_ACCOUNT_JSON env var.
+let initialised = false;
+
+function initFirebase() {
+  if (initialised || admin.apps.length > 0) return;
+  try {
+    let credential;
+
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+      // JSON content directly in env var (preferred for production/Railway)
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      credential = admin.credential.cert(serviceAccount);
+    } else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+      // Path to the downloaded JSON file (easier for local dev)
+      const serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+      credential = admin.credential.cert(serviceAccount);
+    } else {
+      console.warn('[Push] Firebase Admin not configured. Set FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_SERVICE_ACCOUNT_JSON in .env');
+      return;
+    }
+
+    admin.initializeApp({ credential });
+    initialised = true;
+    console.log('[Push] Firebase Admin SDK initialised');
+  } catch (err) {
+    console.error('[Push] Firebase Admin init failed:', err.message);
+  }
+}
+
+/**
+ * Send a push notification to all active devices of a user.
+ * @param {string} userId - MongoDB user _id
+ * @param {object} notification - { title, body, type, url }
+ */
+async function sendPushToUser(userId, { title, body, type = 'default', url = '/' }) {
+  initFirebase();
+  if (!initialised) return; // silently skip if not configured
+
+  try {
+    // Get all active device tokens for this user
+    const deviceTokens = await DeviceToken.find({ user: userId, isActive: true });
+    if (!deviceTokens.length) return;
+
+    const tokens = deviceTokens.map(d => d.token);
+
+    const message = {
+      notification: { title, body },
+      data: { type, url },
+      tokens,
+      webpush: {
+        notification: {
+          title,
+          body,
+          icon: '/icon-192x192.png',
+          badge: '/icon-72x72.png',
+          vibrate: [200, 100, 200],
+        },
+        fcmOptions: { link: url },
+      },
+    };
+
+    const response = await admin.messaging().sendEachForMulticast(message);
+    console.log(`[Push] Sent to ${response.successCount}/${tokens.length} devices for user ${userId}`);
+
+    // Clean up any tokens that are no longer valid (uninstalled app, revoked etc.)
+    if (response.failureCount > 0) {
+      const staleTokens = [];
+      response.responses.forEach((resp, i) => {
+        if (!resp.success && (
+          resp.error?.code === 'messaging/invalid-registration-token' ||
+          resp.error?.code === 'messaging/registration-token-not-registered'
+        )) {
+          staleTokens.push(tokens[i]);
+        }
+      });
+      if (staleTokens.length) {
+        await DeviceToken.updateMany({ token: { $in: staleTokens } }, { isActive: false });
+        console.log(`[Push] Deactivated ${staleTokens.length} stale token(s)`);
+      }
+    }
+  } catch (err) {
+    console.error('[Push] sendPushToUser error:', err.message);
+  }
+}
+
+/**
+ * Send a push notification to all active users (for broadcasts).
+ * Uses FCM multicast — batches tokens in groups of 500.
+ */
+async function sendPushToAllUsers({ title, body, type = 'broadcast', url = '/' }) {
+  initFirebase();
+  if (!initialised) return;
+
+  try {
+    const deviceTokens = await DeviceToken.find({ isActive: true });
+    if (!deviceTokens.length) return;
+
+    const tokens = [...new Set(deviceTokens.map(d => d.token))];
+    console.log(`[Push] Broadcasting to ${tokens.length} device(s)`);
+
+    // FCM multicast limit is 500 tokens per call — batch accordingly
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < tokens.length; i += BATCH_SIZE) {
+      const batch = tokens.slice(i, i + BATCH_SIZE);
+      const message = {
+        notification: { title, body },
+        data: { type, url },
+        tokens: batch,
+        webpush: {
+          notification: {
+            title, body,
+            icon: '/icon-192x192.png',
+            badge: '/icon-72x72.png',
+          },
+          fcmOptions: { link: url },
+        },
+      };
+
+      const response = await admin.messaging().sendEachForMulticast(message);
+      console.log(`[Push] Broadcast batch ${i / BATCH_SIZE + 1}: ${response.successCount}/${batch.length} delivered`);
+
+      // Clean up stale tokens
+      const staleTokens = [];
+      response.responses.forEach((resp, j) => {
+        if (!resp.success && (
+          resp.error?.code === 'messaging/invalid-registration-token' ||
+          resp.error?.code === 'messaging/registration-token-not-registered'
+        )) {
+          staleTokens.push(batch[j]);
+        }
+      });
+      if (staleTokens.length) {
+        await DeviceToken.updateMany({ token: { $in: staleTokens } }, { isActive: false });
+      }
+    }
+  } catch (err) {
+    console.error('[Push] sendPushToAllUsers error:', err.message);
+  }
+}
+
+module.exports = { sendPushToUser, sendPushToAllUsers };
