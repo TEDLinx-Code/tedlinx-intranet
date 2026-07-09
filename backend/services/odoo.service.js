@@ -28,11 +28,11 @@ async function authenticate() {
   // Extract session cookie
   const cookies = response.headers['set-cookie'];
   sessionId = cookies ? cookies.find(c => c.startsWith('session_id')).split(';')[0] : null;
-  sessionExpiry = Date.now() + 6 * 60 * 60 * 1000; // 6 hours
+  sessionExpiry = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
   return sessionId;
 }
 
-// Generic Odoo RPC call
+// Generic Odoo RPC call with automatic re-authentication on session expiry
 async function rpc(model, method, args = [], kwargs = {}) {
   const cookie = await authenticate();
   const response = await axios.post(
@@ -49,12 +49,47 @@ async function rpc(model, method, args = [], kwargs = {}) {
     },
     { headers: { Cookie: cookie } }
   );
+
+  // Detect session expiry — Odoo returns error code 100 or 'Session Expired'
   if (response.data.error) {
+    const errMsg = JSON.stringify(response.data.error);
+    const isSessionExpired =
+      response.data.error.code === 100 ||
+      errMsg.includes('Session Expired') ||
+      errMsg.includes('session') ||
+      errMsg.includes('AccessDenied');
+
+    if (isSessionExpired) {
+      // Force re-authentication and retry once
+      console.log('[Odoo] Session expired — re-authenticating...');
+      sessionId = null;
+      sessionExpiry = null;
+      const freshCookie = await authenticate();
+      const retryResponse = await axios.post(
+        `${ODOO_URL}/web/dataset/call_kw`,
+        {
+          jsonrpc: '2.0',
+          method: 'call',
+          params: {
+            model,
+            method,
+            args,
+            kwargs: { context: { lang: 'en_US' }, ...kwargs },
+          },
+        },
+        { headers: { Cookie: freshCookie } }
+      );
+      if (retryResponse.data.error) {
+        throw new Error(`Odoo RPC error: ${JSON.stringify(retryResponse.data.error)}`);
+      }
+      return retryResponse.data.result;
+    }
+
     throw new Error(`Odoo RPC error: ${JSON.stringify(response.data.error)}`);
   }
+
   return response.data.result;
 }
-
 // ─── EMPLOYEES ────────────────────────────────────────────────────────────────
 
 async function getEmployees(fields = ['id', 'name', 'job_title', 'department_id', 'work_email', 'mobile_phone', 'work_location_id', 'image_128']) {
