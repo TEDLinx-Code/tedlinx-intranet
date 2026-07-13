@@ -297,6 +297,13 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-base)
 .btn-sm { padding: 6px 12px; font-size: var(--font-size-xs); }
 .btn svg { width: 16px; height: 16px; }
 
+/* ── Progress bar ────────────────────────────────────────── */
+.progress-track { flex: 1; height: 6px; background: var(--color-bg); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.2s; }
+.progress-low { background: var(--color-danger-text); }
+.progress-mid { background: var(--color-accent); }
+.progress-high { background: var(--color-primary); }
+
 /* ── Forms ───────────────────────────────────────────────── */
 .form-row { margin-bottom: 16px; }
 .form-label { display: block; font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text-secondary); margin-bottom: 6px; }

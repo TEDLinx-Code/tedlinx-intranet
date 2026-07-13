@@ -23,6 +23,7 @@ const icons = {
   store: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z M3 6h18 M16 10a4 4 0 0 1-8 0',
   megaphone: 'M3 11l18-5v12L3 14v-3z M11.6 16.8a3 3 0 0 1-5.8-1.6',
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
+  tasks: 'M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
   menu: 'M3 12h18 M3 6h18 M3 18h18',
   close: 'M18 6L6 18 M6 6l12 12',
 };
@@ -86,6 +87,11 @@ export default function Sidebar() {
           <div className="nav-section">
             <div className="nav-section-label">Main</div>
             {navLink('/', 'home', 'Home', true)}
+          </div>
+
+          <div className="nav-section">
+            <div className="nav-section-label">Work</div>
+            {navLink('/tasks', 'tasks', 'Tasks')}
           </div>
 
           {!isAdmin && (

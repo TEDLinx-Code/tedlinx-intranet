@@ -46,6 +46,7 @@ app.use('/api/inventory', require('./routes/inventory.routes'));
 app.use('/api/push', require('./routes/push.routes'));
 app.use('/api/settings', require('./routes/settings.routes'));
 app.use('/api/broadcasts', require('./routes/broadcast.routes'));
+app.use('/api/tasks', require('./routes/task.routes'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -70,6 +71,8 @@ mongoose
     console.log('[DB] MongoDB connected');
     // Validate Odoo Intranet folder exists at startup
     require('./services/odoo.service').validateIntranetFolder();
+    // Start the daily task due-soon reminder cron
+    require('./services/taskReminder.service').start();
     app.listen(PORT, () => console.log(`[Server] Running on port ${PORT}`));
   })
   .catch(err => {

@@ -6,6 +6,8 @@ import Sidebar from './components/layout/Sidebar';
 import LoginPage from './pages/auth/LoginPage';
 import HomePage from './pages/HomePage';
 import LeavePage from './pages/leave/LeavePage';
+import TaskListPage from './pages/tasks/TaskListPage';
+import TaskDetailPage from './pages/tasks/TaskDetailPage';
 import ExpensePage from './pages/expense/ExpensePage';
 import DirectoryPage from './pages/directory/DirectoryPage';
 import ApprovalsPage from './pages/ApprovalsPage';
@@ -73,6 +75,8 @@ function AppRoutes() {
       <Route element={<ProtectedLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/leave" element={<LeavePage />} />
+        <Route path="/tasks" element={<TaskListPage />} />
+        <Route path="/tasks/:id" element={<TaskDetailPage />} />
         <Route path="/expenses" element={<ExpensePage />} />
         <Route path="/directory" element={<DirectoryPage />} />
         <Route path="/documents" element={<DocumentsPage />} />
