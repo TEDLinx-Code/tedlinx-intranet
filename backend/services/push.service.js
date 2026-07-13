@@ -136,8 +136,11 @@ async function sendPushToAllUsers({ title, body, type = 'broadcast', url = '/' }
       };
 
       const response = await admin.messaging().sendEachForMulticast(message);
-      console.log(`[Push] Broadcast batch ${i / BATCH_SIZE + 1}: ${response.successCount}/${batch.length} delivered`);
-
+      console.log(`[Push] Broadcast batch responses:`, JSON.stringify(response.responses.map(r => ({
+        success: r.success,
+        error: r.error?.code,
+        errorMsg: r.error?.message
+      }))));
       // Clean up stale tokens
       const staleTokens = [];
       response.responses.forEach((resp, j) => {
