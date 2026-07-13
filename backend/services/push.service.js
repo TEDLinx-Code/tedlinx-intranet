@@ -52,15 +52,29 @@ async function sendPushToUser(userId, { title, body, type = 'default', url = '/'
       notification: { title, body },
       data: { type, url },
       tokens,
+      android: {
+        priority: 'high',
+        notification: {
+        title,
+        body,
+        icon: 'ic_launcher',
+        clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+        },
+      },
       webpush: {
+        headers: {
+          Urgency: 'high',
+          TTL: '86400',
+        },
         notification: {
           title,
           body,
           icon: '/icon-192x192.png',
           badge: '/icon-72x72.png',
           vibrate: [200, 100, 200],
+          requireInteraction: false,
         },
-        fcmOptions: { link: url },
+        fcmOptions: { link: `https://tedlinx-intranet.vercel.app${url}` },
       },
     };
 
@@ -111,13 +125,28 @@ async function sendPushToAllUsers({ title, body, type = 'broadcast', url = '/' }
         notification: { title, body },
         data: { type, url },
         tokens: batch,
+        android: {
+          priority: 'high',
+          notification: {
+          title,
+          body,
+          icon: 'ic_launcher',
+          clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+          },
+        },
         webpush: {
+          headers: {
+            Urgency: 'high',
+            TTL: '86400',
+          },
           notification: {
             title, body,
             icon: '/icon-192x192.png',
             badge: '/icon-72x72.png',
+            vibrate: [200, 100, 200],
+            requireInteraction: false,
           },
-          fcmOptions: { link: url },
+          fcmOptions: { link: `https://tedlinx-intranet.vercel.app${url}` },
         },
       };
 
