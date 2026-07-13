@@ -39,63 +39,48 @@ function initFirebase() {
  */
 async function sendPushToUser(userId, { title, body, type = 'default', url = '/' }) {
   initFirebase();
-  if (!initialised) return; // silently skip if not configured
+  if (!initialised) return;
 
   try {
-    // Get all active device tokens for this user
     const deviceTokens = await DeviceToken.find({ user: userId, isActive: true });
     if (!deviceTokens.length) return;
 
-    const tokens = deviceTokens.map(d => d.token);
+    const fullUrl = `https://tedlinx-intranet.vercel.app${url}`;
+    const staleTokens = [];
 
-    const message = {
-      notification: { title, body },
-      data: { type, url },
-      tokens,
-      android: {
-        priority: 'high',
-        notification: {
-        title,
-        body,
-        icon: 'ic_launcher',
-        clickAction: 'FLUTTER_NOTIFICATION_CLICK',
-        },
-      },
-      webpush: {
-        headers: {
-          Urgency: 'high',
-          TTL: '86400',
-        },
-        notification: {
-          title,
-          body,
-          icon: '/icon-192x192.png',
-          badge: '/icon-72x72.png',
-          vibrate: [200, 100, 200],
-          requireInteraction: false,
-        },
-        fcmOptions: { link: `https://tedlinx-intranet.vercel.app${url}` },
-      },
-    };
-
-    const response = await admin.messaging().sendEachForMulticast(message);
-    console.log(`[Push] Sent to ${response.successCount}/${tokens.length} devices for user ${userId}`);
-
-    // Clean up any tokens that are no longer valid (uninstalled app, revoked etc.)
-    if (response.failureCount > 0) {
-      const staleTokens = [];
-      response.responses.forEach((resp, i) => {
-        if (!resp.success && (
-          resp.error?.code === 'messaging/invalid-registration-token' ||
-          resp.error?.code === 'messaging/registration-token-not-registered'
-        )) {
-          staleTokens.push(tokens[i]);
+    for (const device of deviceTokens) {
+      try {
+        await admin.messaging().send({
+          token: device.token,
+          notification: { title, body },
+          data: { type, url: fullUrl },
+          android: {
+            priority: 'high',
+            notification: { title, body, icon: 'ic_launcher' },
+          },
+          webpush: {
+            headers: { Urgency: 'high', TTL: '86400' },
+            notification: {
+              title, body,
+              icon: '/icon-192x192.png',
+              badge: '/icon-72x72.png',
+              requireInteraction: false,
+            },
+            fcmOptions: { link: fullUrl },
+          },
+        });
+        console.log(`[Push] Sent to device ${device._id}`);
+      } catch (e) {
+        console.log(`[Push] Failed for device ${device._id}:`, e.message);
+        if (e.code === 'messaging/invalid-registration-token' ||
+            e.code === 'messaging/registration-token-not-registered') {
+          staleTokens.push(device.token);
         }
-      });
-      if (staleTokens.length) {
-        await DeviceToken.updateMany({ token: { $in: staleTokens } }, { isActive: false });
-        console.log(`[Push] Deactivated ${staleTokens.length} stale token(s)`);
       }
+    }
+
+    if (staleTokens.length) {
+      await DeviceToken.updateMany({ token: { $in: staleTokens } }, { isActive: false });
     }
   } catch (err) {
     console.error('[Push] sendPushToUser error:', err.message);
