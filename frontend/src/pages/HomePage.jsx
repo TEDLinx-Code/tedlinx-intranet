@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { format } from 'date-fns';
+import { requestNotificationPermission } from '../services/firebase';
+import { toast } from 'react-hot-toast';
+
 
 function statusClass(state) {
   const map = { draft: 'draft', confirm: 'pending', validate1: 'pending', validate: 'approved', refuse: 'refused' };
@@ -51,7 +54,22 @@ export default function HomePage() {
   const totalLeave = leaveBalance ? leaveBalance.reduce((sum, a) => sum + (a.virtual_remaining_leaves ?? a.number_of_days), 0) : null;
   const pendingLeave = recentLeave.filter(l => ['confirm', 'validate1'].includes(l.state)).length;
   const pendingExpenses = recentExpenses.filter(e => ['draft', 'submitted', 'reported'].includes(e.state)).length;
+  const [notifStatus, setNotifStatus] = useState(() => {
+    try { return Notification.permission; } catch { return 'default'; }
+  });
 
+  const handleEnableNotifications = async () => {
+    const token = await requestNotificationPermission(api);
+    if (token) {
+      setNotifStatus('granted');
+      toast.success('Notifications enabled!');
+    } else {
+      setNotifStatus(() => { try { return Notification.permission; } catch { return 'default'; } });
+      toast.error('Could not enable notifications. Please allow in browser settings.');
+    }
+  };
+
+  // ... existing useEffect and other functions ...
   return (
     <div>
       <div className="page-header">
@@ -89,7 +107,38 @@ export default function HomePage() {
           </div>
         )
       )}
-
+      {notifStatus !== 'granted' && (
+        <div style={{
+          background: 'var(--color-accent-bg)',
+          border: '1px solid var(--color-accent)',
+          borderRadius: 12,
+          padding: '12px 18px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>🔔</span>
+            <div>
+              <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--color-accent-text)' }}>
+                Enable notifications
+              </div>
+              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-accent-text)', opacity: 0.8 }}>
+                Get alerts for leave approvals, expenses and announcements
+              </div>
+            </div>
+          </div>
+          <button
+            className="btn btn-accent btn-sm"
+            onClick={handleEnableNotifications}
+            style={{ flexShrink: 0 }}
+          >
+            Enable
+          </button>
+        </div>
+      )}
       <div className="metric-grid">
         <div className="metric-card">
           <div className="metric-label">Leave balance</div>
