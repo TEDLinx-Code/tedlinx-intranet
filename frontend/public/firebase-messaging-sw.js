@@ -6,6 +6,15 @@
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
+// Keep service worker alive
+self.addEventListener('install', (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
+
 // Must match the config in src/services/firebase.js
 firebase.initializeApp({
   apiKey: 'AIzaSyCgsPQ6bz2DgthIZtiyKee2cOsGf00eEGg',
