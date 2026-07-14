@@ -36,14 +36,17 @@ export default function HomePage() {
     getMyTasks().then(setMyTasks).catch(() => {});
 
     if (!user?.odooEmployeeId) { setLoading(false); return; }
-    // Request push permission once per session after login
-      if (Notification.permission === 'default') {
-        import('../services/firebase').then(({ requestNotificationPermission }) => {
+    // Request push permission once per session after login.
+    // Guarded: the Notification API doesn't exist on iOS Safari before 16.4 (and in
+    // some webviews), and referencing it directly throws an uncaught ReferenceError
+    // that crashes the whole app — hence the typeof check before touching it.
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      import('../services/firebase').then(({ requestNotificationPermission }) => {
         import('../services/api').then(({ default: api }) => {
-        requestNotificationPermission(api);
+          requestNotificationPermission(api);
         });
-        });
-      }
+      });
+    }
     Promise.all([
       api.get('/leave/balance').then(r => setLeaveBalance(r.data.allocations)),
       api.get('/leave/my').then(r => setRecentLeave(r.data.requests.slice(0, 3))),
@@ -59,16 +62,21 @@ export default function HomePage() {
   const pendingExpenses = recentExpenses.filter(e => ['draft', 'submitted', 'reported'].includes(e.state)).length;
   const openTasks = myTasks.filter(t => t.status !== 'Completed').length;
   const [notifStatus, setNotifStatus] = useState(() => {
+    if (typeof Notification === 'undefined') return 'unsupported';
     try { return Notification.permission; } catch { return 'default'; }
   });
 
   const handleEnableNotifications = async () => {
+    if (typeof Notification === 'undefined') {
+      toast.error('Notifications are not supported on this browser.');
+      return;
+    }
     const token = await requestNotificationPermission(api);
     if (token) {
       setNotifStatus('granted');
       toast.success('Notifications enabled!');
     } else {
-      setNotifStatus(() => { try { return Notification.permission; } catch { return 'default'; } });
+      try { setNotifStatus(Notification.permission); } catch { setNotifStatus('default'); }
       toast.error('Could not enable notifications. Please allow in browser settings.');
     }
   };
@@ -111,7 +119,7 @@ export default function HomePage() {
           </div>
         )
       )}
-      {notifStatus !== 'granted' && (
+      {notifStatus !== 'granted' && notifStatus !== 'unsupported' && (
         <div style={{
           background: 'var(--color-accent-bg)',
           border: '1px solid var(--color-accent)',
