@@ -93,6 +93,7 @@ export default function Sidebar() {
           <div className="nav-section">
             <div className="nav-section-label">Work</div>
             {navLink('/tasks', 'tasks', 'Tasks')}
+            {navLink('/calendar', 'calendar', 'Calendar')}
           </div>
 
           {!isAdmin && (

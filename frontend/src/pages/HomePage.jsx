@@ -179,7 +179,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="quick-actions" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
+      <div className="quick-actions quick-actions-5">
         <div className="quick-action" onClick={() => navigate('/leave')}>
           <CalendarIcon />
           <span>Apply leave</span>

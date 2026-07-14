@@ -191,6 +191,14 @@ async function getTeamLeaveRequests(managerOdooId) {
   );
 }
 
+// All currently-approved leave org-wide — used by the calendar leave-sync cron.
+async function getAllApprovedLeaves() {
+  return rpc('hr.leave', 'search_read',
+    [[['state', '=', 'validate']]],
+    { fields: ['id', 'employee_id', 'holiday_status_id', 'date_from', 'date_to', 'name'] }
+  );
+}
+
 async function approveLeave(leaveId) {
   // Odoo 19 uses action_validate instead of action_approve in some configurations
   try {
@@ -492,6 +500,7 @@ module.exports = {
   getLeaveRequests,
   createLeaveRequest,
   getTeamLeaveRequests,
+  getAllApprovedLeaves,
   approveLeave,
   refuseLeave,
   getExpenseCategories,

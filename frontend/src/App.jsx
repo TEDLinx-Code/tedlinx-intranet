@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage';
 import LeavePage from './pages/leave/LeavePage';
 import TaskListPage from './pages/tasks/TaskListPage';
 import TaskDetailPage from './pages/tasks/TaskDetailPage';
+import CalendarPage from './pages/calendar/CalendarPage';
 import ExpensePage from './pages/expense/ExpensePage';
 import DirectoryPage from './pages/directory/DirectoryPage';
 import ApprovalsPage from './pages/ApprovalsPage';
@@ -80,6 +81,7 @@ function AppRoutes() {
         <Route path="/leave" element={<LeavePage />} />
         <Route path="/tasks" element={<TaskListPage />} />
         <Route path="/tasks/:id" element={<TaskDetailPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/expenses" element={<ExpensePage />} />
         <Route path="/directory" element={<DirectoryPage />} />
         <Route path="/documents" element={<DocumentsPage />} />

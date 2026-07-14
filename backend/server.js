@@ -48,6 +48,7 @@ app.use('/api/settings', require('./routes/settings.routes'));
 app.use('/api/broadcasts', require('./routes/broadcast.routes'));
 app.use('/api/tasks', require('./routes/task.routes'));
 app.use('/api/notifications', require('./routes/notification.routes'));
+app.use('/api/calendar', require('./routes/calendar.routes'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -74,6 +75,10 @@ mongoose
     require('./services/odoo.service').validateIntranetFolder();
     // Start the daily task due-soon reminder cron
     require('./services/taskReminder.service').start();
+    // Start the hourly Odoo leave -> calendar sync cron
+    require('./services/leaveSync.service').start();
+    // Start the daily calendar event reminder cron
+    require('./services/calendarReminder.service').start();
     app.listen(PORT, () => console.log(`[Server] Running on port ${PORT}`));
   })
   .catch(err => {
