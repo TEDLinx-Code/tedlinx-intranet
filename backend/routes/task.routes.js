@@ -151,19 +151,24 @@ router.post(
       task.status = percentComplete >= 100 ? 'Completed' : percentComplete > 0 ? 'In Progress' : 'Open';
       await task.save();
 
-      // Notify all managers whenever a status update is submitted
+      // Notify all managers, plus whoever assigned this task (if not already a manager
+      // and not the person submitting the update), whenever a status update is submitted.
       try {
         const managers = await User.find({ role: 'manager', isActive: true });
-        await Promise.all(managers.map(m =>
-          push.sendPushToUser(m._id, {
+        const recipientIds = new Set(managers.map(m => String(m._id)));
+        recipientIds.add(String(task.assignedBy));
+        recipientIds.delete(String(req.user._id)); // never notify yourself
+
+        await Promise.all([...recipientIds].map(recipientId =>
+          push.sendPushToUser(recipientId, {
             title: 'Task status update',
             body: `${req.user.name} updated "${task.title}" to ${percentComplete}%`,
             type: 'task_status_update',
             url: `/tasks/${task._id}`,
-          }).catch(e => console.error('[Tasks] Manager push failed:', e.message))
+          }).catch(e => console.error('[Tasks] Status update push failed:', e.message))
         ));
       } catch (pushErr) {
-        console.error('[Tasks] Manager notify failed:', pushErr.message);
+        console.error('[Tasks] Status update notify failed:', pushErr.message);
       }
 
       const populatedLog = await TaskLog.findById(log._id).populate('user', 'name');

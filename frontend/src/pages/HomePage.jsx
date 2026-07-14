@@ -5,6 +5,7 @@ import api from '../services/api';
 import { format } from 'date-fns';
 import { requestNotificationPermission } from '../services/firebase';
 import { toast } from 'react-hot-toast';
+import { getMyTasks } from '../services/task.service';
 
 
 function statusClass(state) {
@@ -26,11 +27,13 @@ export default function HomePage() {
   const [payslips, setPayslips] = useState([]);
   const [myAssets, setMyAssets] = useState([]);
   const [announcement, setAnnouncement] = useState(null); // { type: 'broadcast'|'quote', ... }
+  const [myTasks, setMyTasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Announcement banner loads independently of Odoo linkage
+    // Announcement banner and tasks load independently of Odoo linkage
     api.get('/broadcasts/current').then(r => setAnnouncement(r.data)).catch(() => {});
+    getMyTasks().then(setMyTasks).catch(() => {});
 
     if (!user?.odooEmployeeId) { setLoading(false); return; }
     // Request push permission once per session after login
@@ -54,6 +57,7 @@ export default function HomePage() {
   const totalLeave = leaveBalance ? leaveBalance.reduce((sum, a) => sum + (a.virtual_remaining_leaves ?? a.number_of_days), 0) : null;
   const pendingLeave = recentLeave.filter(l => ['confirm', 'validate1'].includes(l.state)).length;
   const pendingExpenses = recentExpenses.filter(e => ['draft', 'submitted', 'reported'].includes(e.state)).length;
+  const openTasks = myTasks.filter(t => t.status !== 'Completed').length;
   const [notifStatus, setNotifStatus] = useState(() => {
     try { return Notification.permission; } catch { return 'default'; }
   });
@@ -160,9 +164,14 @@ export default function HomePage() {
           <div className="metric-value">{myAssets.length}</div>
           <div className="metric-hint">items assigned</div>
         </div>
+        <div className="metric-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/tasks')}>
+          <div className="metric-label">My tasks</div>
+          <div className="metric-value">{openTasks}</div>
+          <div className="metric-hint">open tasks</div>
+        </div>
       </div>
 
-      <div className="quick-actions" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+      <div className="quick-actions" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
         <div className="quick-action" onClick={() => navigate('/leave')}>
           <CalendarIcon />
           <span>Apply leave</span>
@@ -178,6 +187,10 @@ export default function HomePage() {
         <div className="quick-action" onClick={() => navigate('/directory')}>
           <UsersIcon />
           <span>Directory</span>
+        </div>
+        <div className="quick-action" onClick={() => navigate('/tasks')}>
+          <TaskIcon />
+          <span>Tasks</span>
         </div>
       </div>
 
@@ -284,3 +297,4 @@ const CalendarIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentC
 const ReceiptIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M4 2l2 2 2-2 2 2 2-2 2 2 2-2v16l-2-2-2 2-2-2-2 2-2-2-2 2-2-2-2 2zM9 10h6M9 14h4" /></svg>;
 const UsersIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>;
 const BoxIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg>;
+const TaskIcon = () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>;
