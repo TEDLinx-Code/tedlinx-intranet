@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
-import { getTask, submitStatusUpdate, deleteTask } from '../../services/task.service';
+import { getTask, submitStatusUpdate, deleteTask, reopenTask } from '../../services/task.service';
 
 function priorityBadgeClass(priority) {
   if (priority === 'High') return 'badge badge-refused';
@@ -25,6 +25,7 @@ export default function TaskDetailPage() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [note, setNote] = useState('');
   const [percent, setPercent] = useState(0);
 
@@ -42,7 +43,9 @@ export default function TaskDetailPage() {
 
   useEffect(() => { fetchTask(); }, [id]);
 
-  const canUpdate = task && (isManager || String(task.assignedTo._id) === String(user?._id));
+  const isAssignee = task && String(task.assignedTo._id) === String(user?._id);
+  const canUpdate = task && task.status !== 'Completed' && (isManager || isAssignee);
+  const canReopen = task && task.status === 'Completed' && (isManager || isAssignee);
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -57,6 +60,19 @@ export default function TaskDetailPage() {
       toast.error(err.response?.data?.message || 'Could not submit update.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleReopen = async () => {
+    setReopening(true);
+    try {
+      await reopenTask(id);
+      toast.success('Task reopened.');
+      fetchTask();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not reopen task.');
+    } finally {
+      setReopening(false);
     }
   };
 
@@ -90,9 +106,17 @@ export default function TaskDetailPage() {
           <span>Assigned by: {task.assignedBy.name}</span>
           <span className={priorityBadgeClass(task.priority)}>{task.priority}</span>
           <span>Due: {format(new Date(task.dueDate), 'd MMM yyyy')}</span>
-          {canDelete && (
-            <button className="btn btn-sm btn-danger" style={{ marginLeft: 'auto' }} onClick={handleDelete}>Delete</button>
-          )}
+          {task.status === 'Completed' && <span className="badge badge-approved">Completed</span>}
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            {canReopen && (
+              <button className="btn btn-sm" onClick={handleReopen} disabled={reopening}>
+                {reopening ? 'Reopening…' : 'Reopen task'}
+              </button>
+            )}
+            {canDelete && (
+              <button className="btn btn-sm btn-danger" onClick={handleDelete}>Delete</button>
+            )}
+          </div>
         </div>
 
         <div style={{ marginBottom: 20 }}>

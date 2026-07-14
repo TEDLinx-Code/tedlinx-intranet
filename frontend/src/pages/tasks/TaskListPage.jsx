@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
-import { getMyTasks, getTeamTasks, getAssignableUsers, createTask } from '../../services/task.service';
+import { getMyTasks, getAssignedByMeTasks, getTeamTasks, getCompletedTasks, getAssignableUsers, createTask } from '../../services/task.service';
 
 function priorityBadgeClass(priority) {
   if (priority === 'High') return 'badge badge-refused';
@@ -20,9 +20,11 @@ function progressClass(pct) {
 export default function TaskListPage() {
   const { user, isManager } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState('my'); // 'my' | 'team'
+  const [tab, setTab] = useState('my'); // 'my' | 'assignedByMe' | 'team' | 'completed'
   const [myTasks, setMyTasks] = useState([]);
+  const [assignedByMeTasks, setAssignedByMeTasks] = useState([]);
   const [teamTasks, setTeamTasks] = useState([]);
+  const [completedTasks, setCompletedTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -31,7 +33,12 @@ export default function TaskListPage() {
 
   const fetchAll = () => {
     setLoading(true);
-    const calls = [getMyTasks().then(setMyTasks), getAssignableUsers().then(setUsers)];
+    const calls = [
+      getMyTasks().then(setMyTasks),
+      getAssignedByMeTasks().then(setAssignedByMeTasks),
+      getCompletedTasks().then(setCompletedTasks),
+      getAssignableUsers().then(setUsers),
+    ];
     if (isManager) calls.push(getTeamTasks().then(setTeamTasks));
     Promise.all(calls)
       .catch(err => toast.error(err.response?.data?.message || 'Failed to load tasks.'))
@@ -61,7 +68,9 @@ export default function TaskListPage() {
 
   if (loading) return <div className="loading">Loading tasks…</div>;
 
-  const tasks = tab === 'team' ? teamTasks : myTasks;
+  const tasksByTab = { my: myTasks, assignedByMe: assignedByMeTasks, team: teamTasks, completed: completedTasks };
+  const tabTitles = { my: 'My tasks', assignedByMe: 'Assigned by me', team: 'All team tasks', completed: 'Completed tasks' };
+  const tasks = tasksByTab[tab];
 
   return (
     <div>
@@ -119,15 +128,17 @@ export default function TaskListPage() {
         </div>
       )}
 
-      {isManager && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <button className={`btn ${tab === 'my' ? 'btn-primary' : ''}`} onClick={() => setTab('my')}>My tasks</button>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        <button className={`btn ${tab === 'my' ? 'btn-primary' : ''}`} onClick={() => setTab('my')}>My tasks</button>
+        <button className={`btn ${tab === 'assignedByMe' ? 'btn-primary' : ''}`} onClick={() => setTab('assignedByMe')}>Assigned by me</button>
+        {isManager && (
           <button className={`btn ${tab === 'team' ? 'btn-primary' : ''}`} onClick={() => setTab('team')}>Team tasks</button>
-        </div>
-      )}
+        )}
+        <button className={`btn ${tab === 'completed' ? 'btn-primary' : ''}`} onClick={() => setTab('completed')}>Completed</button>
+      </div>
 
       <div className="card">
-        <div className="card-title">{tab === 'team' ? 'All team tasks' : 'My tasks'}</div>
+        <div className="card-title">{tabTitles[tab]}</div>
         {tasks.length === 0 ? (
           <div className="empty-state"><p>No tasks here yet.</p></div>
         ) : (
@@ -138,6 +149,7 @@ export default function TaskListPage() {
                   <div className="list-row-title">{t.title}</div>
                   <div className="list-row-sub">
                     Assigned to {t.assignedTo?.name} · Due {format(new Date(t.dueDate), 'd MMM yyyy')}
+                    {tab === 'completed' && t.assignedBy?.name ? ` · Assigned by ${t.assignedBy.name}` : ''}
                   </div>
                 </div>
                 <span className={priorityBadgeClass(t.priority)}>{t.priority}</span>
