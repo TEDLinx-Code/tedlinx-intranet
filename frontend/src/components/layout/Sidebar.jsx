@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import wordmark from '../../assets/tedlinx-wordmark.png';
+import NotificationBell from '../NotificationBell';
 
 const Icon = ({ d }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -67,7 +68,7 @@ export default function Sidebar() {
           <Icon d={open ? icons.close : icons.menu} />
         </button>
         <img src={wordmark} alt="TEDLinx" style={{ height: 28, objectFit: 'contain' }} />
-        <div style={{ width: 40 }} />
+        <NotificationBell />
       </div>
 
       {/* Overlay */}

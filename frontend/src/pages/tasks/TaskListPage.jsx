@@ -17,6 +17,8 @@ function progressClass(pct) {
   return 'progress-high';
 }
 
+const priorityRank = { High: 0, Medium: 1, Low: 2 };
+
 export default function TaskListPage() {
   const { user, isManager } = useAuth();
   const navigate = useNavigate();
@@ -30,6 +32,8 @@ export default function TaskListPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', assignedTo: '', priority: 'Medium', dueDate: '' });
+  const [filterAssignee, setFilterAssignee] = useState('');
+  const [sortBy, setSortBy] = useState('dueDate'); // 'dueDate' | 'priority'
 
   const fetchAll = () => {
     setLoading(true);
@@ -46,6 +50,7 @@ export default function TaskListPage() {
   };
 
   useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { setFilterAssignee(''); }, [tab]);
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -70,7 +75,21 @@ export default function TaskListPage() {
 
   const tasksByTab = { my: myTasks, assignedByMe: assignedByMeTasks, team: teamTasks, completed: completedTasks };
   const tabTitles = { my: 'My tasks', assignedByMe: 'Assigned by me', team: 'All team tasks', completed: 'Completed tasks' };
-  const tasks = tasksByTab[tab];
+  const tabTasks = tasksByTab[tab];
+
+  // Assignee filter is only meaningful on tabs that can contain more than one assignee
+  const showAssigneeFilter = tab !== 'my';
+  const assigneeOptions = showAssigneeFilter
+    ? [...new Map(tabTasks.map(t => [t.assignedTo?._id, t.assignedTo])).values()].filter(Boolean).sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+
+  const tasks = tabTasks
+    .filter(t => !filterAssignee || t.assignedTo?._id === filterAssignee)
+    .slice()
+    .sort((a, b) => {
+      if (sortBy === 'priority') return priorityRank[a.priority] - priorityRank[b.priority];
+      return new Date(a.dueDate) - new Date(b.dueDate);
+    });
 
   return (
     <div>
@@ -135,6 +154,29 @@ export default function TaskListPage() {
           <button className={`btn ${tab === 'team' ? 'btn-primary' : ''}`} onClick={() => setTab('team')}>Team tasks</button>
         )}
         <button className={`btn ${tab === 'completed' ? 'btn-primary' : ''}`} onClick={() => setTab('completed')}>Completed</button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+        {showAssigneeFilter && assigneeOptions.length > 0 && (
+          <select
+            className="form-input"
+            style={{ width: 'auto', minWidth: 180 }}
+            value={filterAssignee}
+            onChange={e => setFilterAssignee(e.target.value)}
+          >
+            <option value="">All assignees</option>
+            {assigneeOptions.map(a => <option key={a._id} value={a._id}>{a.name}</option>)}
+          </select>
+        )}
+        <select
+          className="form-input"
+          style={{ width: 'auto', minWidth: 160 }}
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value)}
+        >
+          <option value="dueDate">Sort by due date</option>
+          <option value="priority">Sort by priority</option>
+        </select>
       </div>
 
       <div className="card">

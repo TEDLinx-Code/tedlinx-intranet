@@ -99,6 +99,19 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-base)
   }
 }
 
+/* ── Desktop notification bell ──────────────────────────────── */
+.desktop-notif-bell {
+  position: fixed;
+  top: 14px;
+  right: 24px;
+  z-index: 150;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+}
+@media (max-width: 768px) {
+  .desktop-notif-bell { display: none; }
+}
+
 /* ── Mobile top bar ──────────────────────────────────────── */
 .mobile-topbar {
   display: none;

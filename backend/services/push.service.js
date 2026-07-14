@@ -1,5 +1,7 @@
 const admin = require('firebase-admin');
 const DeviceToken = require('../models/DeviceToken');
+const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // Initialise Firebase Admin SDK once.
 // The service account JSON file path is set via FIREBASE_SERVICE_ACCOUNT_PATH env var.
@@ -33,11 +35,21 @@ function initFirebase() {
 }
 
 /**
- * Send a push notification to all active devices of a user.
+ * Send a push notification to all active devices of a user, AND persist it as an
+ * in-app notification regardless of whether the push itself is delivered. This is
+ * what backs the notification bell — push depends on browser permission/FCM tokens
+ * and is inherently unreliable, so the in-app record is the source of truth.
  * @param {string} userId - MongoDB user _id
  * @param {object} notification - { title, body, type, url }
  */
 async function sendPushToUser(userId, { title, body, type = 'default', url = '/' }) {
+  // Always persist the in-app notification first, independent of Firebase/push state.
+  try {
+    await Notification.create({ user: userId, title, body, type, url });
+  } catch (dbErr) {
+    console.error('[Push] Failed to persist in-app notification:', dbErr.message);
+  }
+
   initFirebase();
   if (!initialised) return;
 
@@ -92,6 +104,19 @@ async function sendPushToUser(userId, { title, body, type = 'default', url = '/'
  * Uses FCM multicast — batches tokens in groups of 500.
  */
 async function sendPushToAllUsers({ title, body, type = 'broadcast', url = '/' }) {
+  // Persist an in-app notification for every active user first, regardless of
+  // push/device-token state, so the bell shows broadcasts even without push permission.
+  try {
+    const activeUsers = await User.find({ isActive: true }).select('_id');
+    if (activeUsers.length) {
+      await Notification.insertMany(
+        activeUsers.map(u => ({ user: u._id, title, body, type, url }))
+      );
+    }
+  } catch (dbErr) {
+    console.error('[Push] Failed to persist in-app broadcast notifications:', dbErr.message);
+  }
+
   initFirebase();
   if (!initialised) return;
 

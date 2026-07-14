@@ -47,6 +47,7 @@ app.use('/api/push', require('./routes/push.routes'));
 app.use('/api/settings', require('./routes/settings.routes'));
 app.use('/api/broadcasts', require('./routes/broadcast.routes'));
 app.use('/api/tasks', require('./routes/task.routes'));
+app.use('/api/notifications', require('./routes/notification.routes'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));

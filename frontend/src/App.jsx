@@ -20,6 +20,7 @@ import StorekeeperPage from './pages/inventory/StorekeeperPage';
 import UsersPage from './pages/admin/UsersPage';
 import BroadcastsPage from './pages/admin/BroadcastsPage';
 import PushNotificationBanner from './components/PushNotificationBanner';
+import NotificationBell from './components/NotificationBell';
 import { onForegroundMessage } from './services/firebase';
 import './index.css';
 
@@ -34,6 +35,7 @@ function ProtectedLayout() {
   return (
     <div className="app-layout">
       <Sidebar />
+      <NotificationBell className="desktop-notif-bell" />
       <main className="main-content">
         <Outlet />
       </main>
