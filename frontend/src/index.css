@@ -99,7 +99,8 @@ input, select, textarea { font-family: inherit; font-size: var(--font-size-base)
   }
 }
 
-/* ── Desktop notification bell ──────────────────────────────── */
+/* ── Notification bell ───────────────────────────────────── */
+.notif-bell-wrap { position: relative; }
 .desktop-notif-bell {
   position: fixed;
   top: 14px;

@@ -70,7 +70,7 @@ export default function NotificationBell({ className = '' }) {
   };
 
   return (
-    <div ref={wrapRef} className={className} style={{ position: 'relative' }}>
+    <div ref={wrapRef} className={`notif-bell-wrap ${className}`}>
       <button
         onClick={handleToggle}
         aria-label="Notifications"
