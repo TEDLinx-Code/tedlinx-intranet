@@ -21,6 +21,7 @@ import UsersPage from './pages/admin/UsersPage';
 import BroadcastsPage from './pages/admin/BroadcastsPage';
 import PushNotificationBanner from './components/PushNotificationBanner';
 import NotificationBell from './components/NotificationBell';
+import InstallPrompt from './components/InstallPrompt';
 import { onForegroundMessage } from './services/firebase';
 import './index.css';
 
@@ -135,6 +136,7 @@ export default function App() {
           notification={pushNotification}
           onDismiss={() => setPushNotification(null)}
         />
+        <InstallPrompt />
       </AuthProvider>
     </BrowserRouter>
   );
