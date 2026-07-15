@@ -15,7 +15,12 @@ const calendarEventSchema = new mongoose.Schema(
     // Set for events auto-generated from an approved Odoo leave request — these are
     // read-only in the UI and kept in sync by the leave-sync cron job.
     isSystemGenerated: { type: Boolean, default: false },
-    sourceLeaveId: { type: Number, default: null }, // Odoo hr.leave id, unique when set
+    // Odoo hr.leave id, unique when set. IMPORTANT: no `default` here — a sparse+unique
+    // index only skips documents where the field is truly absent, not documents where
+    // it's explicitly null. Giving this a default of null would put sourceLeaveId:null
+    // on every manually-created event, and the second one would fail with a duplicate
+    // key error against the first (this was exactly the bug that broke event creation).
+    sourceLeaveId: { type: Number },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

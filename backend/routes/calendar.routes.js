@@ -21,7 +21,8 @@ router.get('/taggable-users', async (req, res) => {
 });
 
 // GET /api/calendar?month=YYYY-MM — events visible to the logged-in user for that month
-// Visibility: tagged to everyone, tagged to me specifically, created by me, or I'm a manager/admin (see all).
+// Visibility: tagged to everyone, tagged to me specifically, created by me, any Leave event
+// (company-wide visible to everyone), or I'm a manager/admin (see all).
 router.get('/', async (req, res) => {
   try {
     const monthParam = req.query.month; // 'YYYY-MM'
@@ -39,7 +40,7 @@ router.get('/', async (req, res) => {
     const dateFilter = { dateFrom: { $lt: rangeEnd }, dateTo: { $gte: rangeStart } };
     const visibilityFilter = isManagerOrAdmin(req.user)
       ? {}
-      : { $or: [{ taggedAll: true }, { taggedUsers: req.user._id }, { createdBy: req.user._id }] };
+      : { $or: [{ taggedAll: true }, { taggedUsers: req.user._id }, { createdBy: req.user._id }, { type: 'Leave' }] };
 
     const events = await CalendarEvent.find({ isActive: true, ...dateFilter, ...visibilityFilter })
       .populate('createdBy', 'name')
