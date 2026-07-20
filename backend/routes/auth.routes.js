@@ -27,7 +27,12 @@ router.post(
     try {
       const { email, password } = req.body;
       const user = await User.findOne({ email, isActive: true }).select('+password');
-      if (!user || !(await user.comparePassword(password))) {
+      if (!user || !user.password) {
+        // Covers both "no such user" and "account exists but has no password hash"
+        // (the latter would otherwise throw inside bcrypt.compare below).
+        return res.status(401).json({ message: 'Incorrect email or password.' });
+      }
+      if (!(await user.comparePassword(password))) {
         return res.status(401).json({ message: 'Incorrect email or password.' });
       }
       user.lastLogin = new Date();
@@ -39,6 +44,7 @@ router.post(
         user: user.toJSON(),
       });
     } catch (err) {
+      console.error('[Auth] Login error for', req.body?.email, ':', err.message);
       res.status(500).json({ message: 'Login failed. Please try again.' });
     }
   }
@@ -72,6 +78,7 @@ router.put(
       await user.save();
       res.json({ message: 'Password updated successfully.' });
     } catch (err) {
+      console.error('[Auth] Change-password error for user', req.user?._id, ':', err.message);
       res.status(500).json({ message: 'Could not update password.' });
     }
   }
